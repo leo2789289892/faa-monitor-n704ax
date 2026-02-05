@@ -41,7 +41,7 @@ def check_database():
     }
 
     try:
-        # Download the ZIP file (it's large, so we stream it)
+        # Download the ZIP file (stream=True for better memory usage)
         response = requests.get(FAA_DB_URL, headers=headers, stream=True)
         response.raise_for_status()
     except Exception as e:
@@ -50,7 +50,7 @@ def check_database():
 
     print("Download complete. Processing MASTER.txt...")
 
-    # Open the ZIP file in memory (no need to save to disk)
+    # Open the ZIP file in memory
     found_aircraft = False
     
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
@@ -58,15 +58,20 @@ def check_database():
         with z.open('MASTER.txt') as f:
             # Decode the bytes to text
             text_file = io.TextIOWrapper(f, encoding='utf-8-sig', errors='replace')
-            # The file is CSV format
+            # Read as a dictionary (auto-detects headers like 'N-NUMBER', 'AIR WORTH DATE')
             reader = csv.DictReader(text_file)
             
+            # Print headers for debugging if needed
+            # print(f"Headers found: {reader.fieldnames}")
+
             for row in reader:
-                # Check if this row is our aircraft
-                if row.strip() == TARGET_N_NUMBER:
+                # CORRECTED LINE: Access the specific 'N-NUMBER' column
+                current_n_number = row.get('N-NUMBER', '').strip()
+                
+                if current_n_number == TARGET_N_NUMBER:
                     found_aircraft = True
                     
-                    # EXTRACT DATA
+                    # EXTRACT DATA using correct column headers
                     aw_date = row.get('AIR WORTH DATE', '').strip()
                     status = row.get('STATUS CODE', '').strip()
                     
